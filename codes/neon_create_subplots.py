@@ -1,9 +1,11 @@
 import geopandas as gpd
 from shapely.geometry import Polygon, Point
 import pandas as pd
+import os
 
 #%%
-original_shapefile = gpd.read_file("file:///data/gedi/_neon/All_NEON_TOS_Plots_V10 (copy)/All_NEON_TOS_Plot_Polygons_V10.shp")
+original_shapefile_path = "/data/gedi/_neon/All_NEON_TOS_Plots_V10 (copy)/All_NEON_TOS_Plot_Polygons_V10.shp"
+original_shapefile = gpd.read_file(original_shapefile_path)
 original_shapefile = original_shapefile.to_crs(epsg=32616)
 new_polygons = gpd.GeoDataFrame(columns=['geometry', 'subplotID'])
 
@@ -85,10 +87,10 @@ for index, original_polygon in original_shapefile.iterrows():
 new_polygons.drop(columns=['subplotID'], inplace=True)  
 new_polygons.rename(columns={'plotID_identifier': 'subplotID'}, inplace=True)  
 
-new_polygons.to_file("/data/gedi/_neon/NEON_plots_subplots/squares_not.shp")
+new_polygons.to_file(os.path.dirname(original_shapefile_path)+"/squares_not.shp")
 
 #%%
-original_shapefile = "/data/gedi/_neon/All_NEON_TOS_Plots_V10 (copy)/All_NEON_TOS_Plot_Polygons_V10.shp"
+#original_shapefile = "/data/gedi/_neon/All_NEON_TOS_Plots_V10 (copy)/All_NEON_TOS_Plot_Polygons_V10.shp"
 
 gdf = gpd.read_file(original_shapefile)
 
