@@ -1,4 +1,4 @@
-#%%
+#%% import packages
 import pandas as pd
 import geopandas as gpd
 import os
@@ -6,11 +6,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from scipy.optimize import curve_fit
-#%%
-struct_plant_dir = '/data/gedi/_neon/TALL/NEON_struct-plant'
+#%% Read struct_plant_dir
+struct_plant_dir = '/data/gedi/_neon/_new/TALL/NEON_struct-plant'
 #Directory of NEON plant structure
-#%%
-#Merge all apparent individuals
+#%% Merge all apparent individuals
 
 apparent_individual = pd.DataFrame()
 
@@ -32,8 +31,7 @@ apparent_individual.to_csv(app_indi_path)
 print('\nMerged file written to: ',app_indi_path)
 #apparent_individual.loc[apparent_individual['measurementHeight'] >= 130]
 
-#%%
-#Merge all maptag
+#%% Merge all maptag
 maptag = pd.DataFrame()
 
 for root, dirs, files in os.walk(struct_plant_dir):
@@ -53,7 +51,7 @@ maptag_path = os.path.dirname(struct_plant_dir)+'/maptag_'+os.path.basename(file
 
 maptag.to_csv(maptag_path)
 print('\nMerged file written to: ',maptag_path)
-#%%
+#%% Read species name and merge species and tree information
 sp_names = pd.read_csv('/data/gedi/_neon/Species_Names_Forest_Group.csv')
 
 df1 = df2 = df3 = pd.DataFrame()
@@ -198,6 +196,8 @@ v = pd.merge(result_df,chm,on='plot_year',how='left')
 
 
 v1 = v[v['area'] == 400]
+
+#%%
 fig, ax = plt.subplots(figsize=(8, 8), dpi=300)
 
 # Iterate ov1er unique v1alues in 'area'
@@ -276,63 +276,241 @@ plt.title('AGB (2004) vs CHM Height (LENO 2021)')
 #plt.ylim(0,200)
 plt.savefig('/data/gedi/_neon/LENO/chm_agb_2021.png')
 plt.show()
-
 #%%
+#############
+#20240226
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score
+
+
 
 v1 = v[v['area'] == 400]
 v1['AGB'] = v1['AGB_2004'] * 10 / v1['area']
 
+v1 = v1[v1['AGB'] <= 300]
+
+v1= v1.dropna()
 # Plot scatter plot
 plt.figure(figsize=(8, 8), dpi=300)
 plt.scatter(v1['height'], v1['AGB'], label='Scatter Plot')
+plt.xlabel('Height')
+plt.ylabel('AGB')
+
 
 # Define the curve function a*x**b
 def curve_function(x, a, b):
     return a * np.power(x, b)
 
-# Number of iterations
-num_iterations = 20
-
-# Initialize variables to store the best parameters and corresponding fit error
+# Initialize best parameters and error
 best_params = None
 best_fit_error = float('inf')
 
-# Perform iterative curve fitting
-for _ in range(num_iterations):
-    # Random initial guess for curve fitting parameters
-    initial_guess = [0.2, 1]
+# Initialize lists to store iteration details
+iteration_details = []
 
-    params, covariance = curve_fit(curve_function, v1['height'], v1['AGB'], p0=initial_guess)
+# Number of iterations
+num_iterations = 15
 
-    fit_error = np.sum((v1['AGB'] - curve_function(v1['height'], *params))**2)
+plt.figure(figsize=(8, 8), dpi=300)
 
+for iteration in range(num_iterations):
+    train_data, test_data = train_test_split(v1, test_size=0.2, random_state=iteration)
+
+    initial_guess = [1, 1]
+
+    # Train the model using the training set
+    params, covariance = curve_fit(curve_function, train_data['height'], train_data['AGB'], p0=initial_guess)
+
+    # Test the model on the testing set
+    predictions = curve_function(test_data['height'], *params)
+
+    # Calculate RMSE
+    fit_error = np.sqrt(mean_squared_error(test_data['AGB'], predictions))
+
+    # Calculate R-squared
+    r2 = r2_score(test_data['AGB'], predictions)
+
+    # Update best parameters if the current iteration has a lower error
     if fit_error < best_fit_error:
         best_fit_error = fit_error
         best_params = params
 
+    # Append iteration details to the list
+    iteration_details.append({
+        'Iteration': iteration + 1,
+        'Parameters': params,
+        'RMSE': fit_error,
+        'R-squared': r2
+    })
 
+    # Print iteration details
+    print(f"Iteration {iteration + 1} - Parameters: {params}, RMSE: {fit_error}, R-squared: {r2}")
 
-# Generate y values for the best-fitted curve
+# Create a DataFrame from the iteration details
+iteration_df = pd.DataFrame(iteration_details)
+
+# Print or use the final results
+print(f"\nBest Fit Parameters: {best_params}")
+print(f"Best RMSE: {best_fit_error}")
+print(f"Best R-squared: {iteration_df.loc[iteration_df['RMSE'].idxmin(), 'R-squared']}")
+
+# Export the DataFrame to a CSV file
+iteration_df.to_csv(struct_plant_dir + '/iteration_results.csv', index=False)
+print(struct_plant_dir + '/iteration_results.csv', " saved")
+
+# Plot RMSE and R-squared for each iteration
+fig, ax1 = plt.subplots(figsize=(8, 4))
+
+color = 'tab:red'
+ax1.set_xlabel('Iteration')
+ax1.set_ylabel('RMSE', color=color)
+ax1.plot(iteration_df['Iteration'], iteration_df['RMSE'], label='RMSE', color=color)
+ax1.tick_params(axis='y', labelcolor=color)
+
+ax2 = ax1.twinx()  
+color = 'tab:blue'
+ax2.set_ylabel('R-squared', color=color)  
+ax2.plot(iteration_df['Iteration'], iteration_df['R-squared'], label='R-squared', color=color)
+ax2.tick_params(axis='y', labelcolor=color)
+
+fig.tight_layout()  
+
+# Scatter plot and best-fit curve
+plt.figure(figsize=(8, 8), dpi=300)
+plt.scatter(v1['height'], v1['AGB'], label='Data')
 x_curve = np.linspace(0, 50, 100)
 y_curve = curve_function(x_curve, *best_params)
-
-plt.plot(x_curve, y_curve, color='red', label=f'Best Fit: {best_params[0]:.2f} * x**{best_params[1]:.2f}')
-
-# Use plt instead of ax for the second plot
-x_curve2 = np.linspace(0, 50, 100)  
-y_curve2 = 0.24 * np.power(x_curve2, 1.99)
-plt.plot(x_curve2, y_curve2, color='blue', label='3.26*x**1.74')
-
+plt.plot(x_curve, y_curve, color='red', label=f'Best Fit: {best_params[0]:.2f} * x**{best_params[1]:.2f}\nRMSE: {best_fit_error:.2f}\nR-squared: {iteration_df.loc[iteration_df["RMSE"].idxmin(), "R-squared"]:.2f}')
 plt.ylim(0, 500)
 plt.xlabel('CHM Height (chm_RH95)')
 plt.ylabel('AGB 2004')
 plt.title('Scatter Plot and Best Fit Curve')
-
-# Add legend
-plt.legend()
-
-# Show or save the plot
+plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.show()
 
 #%%
-#############
+#Using L-BFGS method
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.optimize import minimize
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score
+
+# Assuming v is your original DataFrame
+# ... (previous code)
+
+# Filter data and preprocess
+v1 = v[v['area'] == 400]
+v1['AGB'] = v1['AGB_2004'] * 10 / v1['area']
+v1 = v1[v1['AGB'] <= 300]
+v1 = v1.dropna()
+
+# Plot scatter plot
+plt.figure(figsize=(8, 8), dpi=300)
+plt.scatter(v1['height'], v1['AGB'], label='Scatter Plot')
+plt.xlabel('Height')
+plt.ylabel('AGB')
+
+# Define the curve function a*x**b
+def curve_function(params, x, y):
+    a, b = params
+    predictions = a * np.power(x, b)
+    return mean_squared_error(y, predictions)
+
+# Initialize best parameters and error
+best_params = None
+best_fit_error = float('inf')
+
+# Initialize lists to store iteration details
+iteration_details = []
+
+# Number of iterations
+num_iterations = 50
+
+plt.figure(figsize=(8, 8), dpi=300)
+
+for iteration in range(num_iterations):
+    train_data, test_data = train_test_split(v1, test_size=0.2, random_state=iteration)
+
+    initial_guess = [1, 1]
+
+    # Minimize the mean squared error
+    result = minimize(curve_function, initial_guess, args=(train_data['height'], train_data['AGB']), method='L-BFGS-B')
+
+    # Get the optimized parameters
+    params = result.x
+
+    # Test the model on the testing set
+    predictions = params[0] * np.power(test_data['height'], params[1])
+
+    # Calculate RMSE
+    fit_error = np.sqrt(mean_squared_error(test_data['AGB'], predictions))
+
+    # Calculate R-squared
+    r2 = r2_score(test_data['AGB'], predictions)
+
+    # Update best parameters if the current iteration has a lower error
+    if fit_error < best_fit_error:
+        best_fit_error = fit_error
+        best_params = params
+
+    # Append iteration details to the list
+    iteration_details.append({
+        'Iteration': iteration + 1,
+        'Parameters': params,
+        'RMSE': fit_error,
+        'R-squared': r2
+    })
+
+    # Print iteration details
+    print(f"Iteration {iteration + 1} - Parameters: {params}, RMSE: {fit_error}, R-squared: {r2}")
+
+# Create a DataFrame from the iteration details
+iteration_df = pd.DataFrame(iteration_details)
+
+# Print or use the final results
+print(f"\nBest Fit Parameters: {best_params}")
+print(f"Best RMSE: {best_fit_error}")
+print(f"Best R-squared: {iteration_df.loc[iteration_df['RMSE'].idxmin(), 'R-squared']}")
+
+# Export the DataFrame to a CSV file
+iteration_df.to_csv(struct_plant_dir + '/iteration_results.csv', index=False)
+print(struct_plant_dir + '/iteration_results.csv', " saved")
+
+# Plot RMSE and R-squared for each iteration
+fig, ax1 = plt.subplots(figsize=(8, 4))
+
+color = 'tab:red'
+ax1.set_xlabel('Iteration')
+ax1.set_xlim(30,40)
+ax1.set_ylabel('RMSE', color=color)
+ax1.plot(iteration_df['Iteration'], iteration_df['RMSE'], label='RMSE', color=color)
+ax1.tick_params(axis='y', labelcolor=color)
+
+ax2 = ax1.twinx()  
+color = 'tab:blue'
+ax2.set_ylabel('R-squared', color=color)  
+ax2.plot(iteration_df['Iteration'], iteration_df['R-squared'], label='R-squared', color=color)
+ax2.tick_params(axis='y', labelcolor=color)
+
+fig.tight_layout()  
+
+# Scatter plot and best-fit curve
+plt.figure(figsize=(8, 8), dpi=300)
+plt.scatter(v1['height'], v1['AGB'], label='Data')
+x_curve = np.linspace(0, 50, 100)
+y_curve = best_params[0] * np.power(x_curve, best_params[1])
+plt.plot(x_curve, y_curve, color='red', label=f'Best Fit: {best_params[0]:.2f} * x**{best_params[1]:.2f}\nRMSE: {best_fit_error:.2f}\nR-squared: {iteration_df.loc[iteration_df["RMSE"].idxmin(), "R-squared"]:.2f}')
+plt.ylim(0, 500)
+plt.xlabel('CHM Height (chm_RH95)')
+plt.ylabel('AGB 2004')
+plt.title('Scatter Plot and Best Fit Curve')
+plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.show()

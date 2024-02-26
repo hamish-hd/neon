@@ -21,15 +21,16 @@ for subdirectory in os.listdir(input_directory):
     if os.path.isdir(subdirectory_path):
         # Mosaic creation
         mosaic_path = os.path.join(os.path.dirname(os.path.dirname(subdirectory_path)),
-                                   f'{subdirectory[9:13]}_{subdirectory[28:32]}.tif')
+                                   f'chm_{subdirectory[9:13]}_{subdirectory[28:32]}.tif')
         tif_files = [f for f in os.listdir(subdirectory_path) if f.endswith('.tif')]
 
         output_srs = osr.SpatialReference()
         output_srs.ImportFromEPSG(4326)
-
+        
+        
         gdal.Warp(mosaic_path, [os.path.join(subdirectory_path, tif) for tif in tif_files], dstSRS=output_srs)
 
-        print(f'Mosaic created and saved to: {mosaic_path}')
+        print(f'Mosaic saved to: {mosaic_path}')
 
         # Load shapefile
         shapefile_path = '/data/gedi/_neon/NEON_plots_subplots/final_plots_not.shp'
@@ -37,7 +38,7 @@ for subdirectory in os.listdir(input_directory):
         gdf = gdf.to_crs(CRS.from_epsg(32616))
         gdf['area'] = gdf.geometry.area.round()
         gdf = gdf.to_crs(CRS.from_epsg(4326))
-        gdf = gdf[gdf['subplotID'].str.contains('_400')]
+        #gdf = gdf[gdf['subplotID'].str.contains('_400')]
 
         # Load raster
         stats = zonal_stats(gdf['geometry'], mosaic_path, stats='percentile_95 mean count', nodata=-9999)
@@ -49,11 +50,11 @@ for subdirectory in os.listdir(input_directory):
         result_df['year'] = subdirectory[28:32]
 
         output_shapefile_path = os.path.join(os.path.dirname(os.path.dirname(subdirectory_path)),
-                                   f'{subdirectory[9:13]}_{subdirectory[28:32]}.shp')
+                                   f'chm_height_{subdirectory[9:13]}_{subdirectory[28:32]}.shp')
         result_df.to_file(output_shapefile_path)
-        print(f'Results saved to: {output_shapefile_path}')
+        print(f'Shapefile saved to: {output_shapefile_path}')
         
         output_csv_path = os.path.join(os.path.dirname(os.path.dirname(subdirectory_path)),
-                                   f'{subdirectory[9:13]}_{subdirectory[28:32]}.csv')
+                                   f'chm_height_{subdirectory[9:13]}_{subdirectory[28:32]}.csv')
         result_df.to_csv(output_csv_path)
-        print(f'Results saved to: {output_csv_path}')
+        print(f'CSV saved to: {output_csv_path}')
