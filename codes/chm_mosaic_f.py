@@ -17,9 +17,7 @@ input_directory = '/data/gedi/_neon/_new/ORNL/NEON_struct-ecosystem'
 for subdirectory in os.listdir(input_directory):
     subdirectory_path = os.path.join(input_directory, subdirectory)
 
-    # Check if it's a directory
     if os.path.isdir(subdirectory_path):
-        # Mosaic creation
         mosaic_path = os.path.join(os.path.dirname(os.path.dirname(subdirectory_path)),
                                    f'chm_{subdirectory[9:13]}_{subdirectory[28:32]}.tif')
         tif_files = [f for f in os.listdir(subdirectory_path) if f.endswith('.tif')]
@@ -32,7 +30,6 @@ for subdirectory in os.listdir(input_directory):
 
         print(f'Mosaic saved to: {mosaic_path}')
 
-        # Load shapefile
         shapefile_path = '/data/gedi/_neon/NEON_plots_subplots/final_plots_not.shp'
         gdf = gpd.read_file(shapefile_path)
         gdf = gdf.to_crs(CRS.from_epsg(32616))

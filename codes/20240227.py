@@ -108,7 +108,7 @@ for pattern, replacement in patterns_to_replace.items():
 values_to_replace = ['21_100', '22_100', '30_100', '31_100']
 for year_to_check in df4['year'].unique():
     for plotID_to_check in df4.loc[df4['year'] == year_to_check, 'plotID'].unique():
-        condition = (df4['year'] == year_to_check) & (df4['subplotID'] == '21_400') & (df4['plotID'] == plotID_to_check)
+        condition = (df4['year'] == year_to_check) & (df4['subplotID'] == '41_400') & (df4['plotID'] == plotID_to_check)
         
         if condition.any():
             for value_to_replace in values_to_replace:
@@ -117,7 +117,7 @@ for year_to_check in df4['year'].unique():
 values_to_replace = ['23_100', '24_100', '32_100', '33_100']
 for year_to_check in df4['year'].unique():
     for plotID_to_check in df4.loc[df4['year'] == year_to_check, 'plotID'].unique():
-        condition = (df4['year'] == year_to_check) & (df4['subplotID'] == '23_400') & (df4['plotID'] == plotID_to_check)
+        condition = (df4['year'] == year_to_check) & (df4['subplotID'] == '41_400') & (df4['plotID'] == plotID_to_check)
         
         if condition.any():
             for value_to_replace in values_to_replace:
@@ -127,7 +127,7 @@ for year_to_check in df4['year'].unique():
 values_to_replace = ['39_100', '40_100', '48_100', '49_100']
 for year_to_check in df4['year'].unique():
     for plotID_to_check in df4.loc[df4['year'] == year_to_check, 'plotID'].unique():
-        condition = (df4['year'] == year_to_check) & (df4['subplotID'] == '39_400') & (df4['plotID'] == plotID_to_check)
+        condition = (df4['year'] == year_to_check) & (df4['subplotID'] == '41_400') & (df4['plotID'] == plotID_to_check)
         
         if condition.any():
             for value_to_replace in values_to_replace:
@@ -433,7 +433,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 #v1 = v[v['area'] == 400]
 v1['AGB'] = v1['AGB_2004'] * 10 / v1['area']
 
-v1 = v1[v1['AGB'] <= 400]
+v1 = v1[v1['AGB'] <= 200]
 
 v1 = v1[v1['area'] == 400]
 
@@ -442,7 +442,7 @@ v1= v1.dropna()
 # Plot scatter plot
 plt.figure(figsize=(8, 8), dpi=300)
 plt.scatter(v1['height'], v1['AGB'], label='Scatter Plot')
-plt.xlabel('Field Height')
+plt.xlabel('CHM_mean')
 plt.ylabel('AGB')
 
 
@@ -458,7 +458,7 @@ best_fit_error = float('inf')
 iteration_details = []
 
 # Number of iterations
-num_iterations = 50
+num_iterations = 15
 
 plt.figure(figsize=(8, 8), dpi=300)
 
@@ -852,9 +852,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
 
 # Filter data and preprocess
-#v1 = v[v['area'] == 400]
+v1 = v[v['area'] == 400]
 v1['AGB'] = v1['AGB_2004'] * 10 / v1['area']
-#v1 = v1[v1['area'] == 400]
+v1 = v1[v1['area'] == 400]
 v1 = v1.dropna()
 
 # Remove outliers based on a certain threshold (adjust the threshold as needed)
