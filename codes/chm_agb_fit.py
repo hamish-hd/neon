@@ -1,5 +1,3 @@
-#  Use this
-
 #%% Import packages
 import pandas as pd
 import geopandas as gpd
@@ -10,6 +8,10 @@ from matplotlib.colors import ListedColormap, Normalize
 from scipy.optimize import curve_fit
 import re
 import matplotlib as mpl
+
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score
+
 
 # Set Times New Roman as the default font for all text elements
 mpl.rcParams['font.family'] = 'Times New Roman'
@@ -110,7 +112,7 @@ for pattern, replacement in patterns_to_replace.items():
 values_to_replace = ['21_100', '22_100', '30_100', '31_100']
 for year_to_check in df4['year'].unique():
     for plotID_to_check in df4.loc[df4['year'] == year_to_check, 'plotID'].unique():
-        condition = (df4['year'] == year_to_check) & (df4['subplotID'] == '21_400') & (df4['plotID'] == plotID_to_check)
+        condition = (df4['year'] == year_to_check) & (df4['subplotID'] == '41_400') & (df4['plotID'] == plotID_to_check)
         
         if condition.any():
             for value_to_replace in values_to_replace:
@@ -119,7 +121,7 @@ for year_to_check in df4['year'].unique():
 values_to_replace = ['23_100', '24_100', '32_100', '33_100']
 for year_to_check in df4['year'].unique():
     for plotID_to_check in df4.loc[df4['year'] == year_to_check, 'plotID'].unique():
-        condition = (df4['year'] == year_to_check) & (df4['subplotID'] == '23_400') & (df4['plotID'] == plotID_to_check)
+        condition = (df4['year'] == year_to_check) & (df4['subplotID'] == '41_400') & (df4['plotID'] == plotID_to_check)
         
         if condition.any():
             for value_to_replace in values_to_replace:
@@ -129,7 +131,7 @@ for year_to_check in df4['year'].unique():
 values_to_replace = ['39_100', '40_100', '48_100', '49_100']
 for year_to_check in df4['year'].unique():
     for plotID_to_check in df4.loc[df4['year'] == year_to_check, 'plotID'].unique():
-        condition = (df4['year'] == year_to_check) & (df4['subplotID'] == '39_400') & (df4['plotID'] == plotID_to_check)
+        condition = (df4['year'] == year_to_check) & (df4['subplotID'] == '41_400') & (df4['plotID'] == plotID_to_check)
         
         if condition.any():
             for value_to_replace in values_to_replace:
@@ -171,34 +173,29 @@ chm['year'] = chm['year'].astype('int32')
 chm['plot_year'] = chm['subplotID'] + '_' + chm['year'].astype(str)
 
 #%% Merge tables
-# Group by 'year' and 'plot_subplot'
 grouped_df = df4.groupby(['year', 'plot_subplot'])
 
-# Calculate maximum height for each group
 #max_height_df = grouped_df['height'].max().reset_index()
 
 percentile_95_df = grouped_df['height'].quantile(0.95).reset_index()
-# Calculate the sum of AGB_2004 and AGB_2014 for each group
 sum_agb_df = grouped_df[['AGB_2004', 'AGB_2014']].sum().reset_index()
 group_count_df = grouped_df.size().reset_index(name='count')
 
 result_df = pd.merge(percentile_95_df, sum_agb_df, on=['year', 'plot_subplot'], how='outer')
 result_df = pd.merge(result_df, group_count_df, on=['year', 'plot_subplot'], how='outer')
 
-# Add the count as a new column in result_df
 result_df['count'] = group_count_df['count']
 
-# Merge the two DataFrames on 'plot_subplot'
 print(result_df)
 result_df['plot_year'] = result_df['plot_subplot'] + '_' + result_df['year'].astype(str)
-###############
+
 #%%
 v = pd.merge(result_df,chm,on='plot_year',how='left')
 #%%
 v1 = v
 
-#%%
-v1 = v[v['area'] == 400]
+#%% Filter only plots with area 400 sq m
+#v1 = v[v['area'] == 400]
 
 #%%
 output_dir = os.path.join(os.path.dirname(struct_plant_dir), 'outputs')
@@ -211,22 +208,18 @@ if not os.path.exists(output_dir):
 else:
     print(f"Directory '{output_dir}' already exists.")
 #%% AGB vs chm_mean
-
-
-# Define the colormap and normalize the color scale
 cmap = plt.get_cmap('viridis')
 normalize = Normalize(vmin=v1['chm_count'].min(), vmax=v1['chm_count'].max())
 
 fig, ax = plt.subplots(figsize=(8, 8), dpi=300)
 
-# Iterate over unique values in 'chm_count'
 for index, row in v1.iterrows():
-    color = cmap(normalize(row['chm_count']))  # Generate color from colormap
+    color = cmap(normalize(row['chm_count']))  
     ax.scatter(row['chm_mean'], row['AGB_2004'] * 10 / row['area'], color=color)
 
-#x_curve = np.linspace(0, 40, 100)  
-#y_curve = 3.26 * np.power(x_curve, 1.74)
-#ax.plot(x_curve, y_curve, color='red', label='Curve')
+x_curve = np.linspace(0, 40, 100)  
+y_curve = 3.26 * np.power(x_curve, 1.34)
+ax.plot(x_curve, y_curve, color='red', label='Curve')
 
 ax.set_xlabel('CHM Height (m)', fontname='Times New Roman', fontsize=14)
 ax.set_ylabel('AGB 2004 (Mg/Ha)', fontname='Times New Roman', fontsize=14)
@@ -264,9 +257,9 @@ for index, row in v1.iterrows():
     color = cmap(normalize(row['chm_count']))  # Generate color from colormap
     ax.scatter(row['chm_mean'], row['AGB_2014'] * 10 / row['area'], color=color)
 
-#x_curve = np.linspace(0, 40, 100)  
-#y_curve = 3.26 * np.power(x_curve, 1.74)
-#ax.plot(x_curve, y_curve, color='red', label='Curve')
+x_curve = np.linspace(0, 40, 100)  
+y_curve = 3.26 * np.power(x_curve, 1.34)
+ax.plot(x_curve, y_curve, color='red', label='Curve')
 
 ax.set_xlabel('CHM Height (m)', fontname='Times New Roman', fontsize=14)
 ax.set_ylabel('AGB 2014 (Mg/Ha)', fontname='Times New Roman', fontsize=14)
@@ -301,6 +294,12 @@ cmap = plt.get_cmap('viridis')
 normalize = Normalize(vmin=v1['count'].min(), vmax=v1['count'].max())
 
 fig, ax = plt.subplots(figsize=(8, 8), dpi=300)
+
+
+x_curve = np.linspace(0, 40, 100)  
+y_curve = 3.26 * np.power(x_curve, 1.34)
+ax.plot(x_curve, y_curve, color='red', label='Curve')
+
 
 # Iterate over unique values in 'chm_count'
 for index, row in v1.iterrows():
@@ -379,7 +378,7 @@ for ax in axs:
     ax.set_ylim(0, 300)
 
 # Add colorbars
-cbar_labels = ['Plot Area (sq.m)', 'Plot Area (sq.m)', 'Number of Trees']
+cbar_labels = ['CHM Count', 'CHM Count', 'Count']
 norm_list = [normalize_chm_count, normalize_chm_count, normalize_field_count]
 for ax, norm, label in zip(axs, norm_list, cbar_labels):
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
@@ -419,23 +418,15 @@ plt.title('CHM_RH95 vs Field Height (LENO)', fontsize=16)
 
 plt.show()
 '''
-#%% Curve fitting - improve this
+#%%
 #############
-#20240226
-
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, r2_score
 
 
 
 #v1 = v[v['area'] == 400]
 v1['AGB'] = v1['AGB_2004'] * 10 / v1['area']
 
-#v1 = v1[v1['AGB'] <= 400]
+#v1 = v1[v1['AGB'] <= 200]
 
 #v1 = v1[v1['area'] == 400]
 
@@ -443,26 +434,14 @@ v1['AGB'] = v1['AGB_2004'] * 10 / v1['area']
 v1= v1.dropna()
 # Plot scatter plot
 plt.figure(figsize=(8, 8), dpi=300)
-
-# Extract unique 'year_x' values for color mapping
-unique_years = v1['year_x'].unique()
-
-# Create a colormap with a different color for each unique year
-colors = plt.cm.viridis(np.linspace(0, 1, len(unique_years)))
-
-for i, year in enumerate(unique_years):
-    year_data = v1[v1['year_x'] == year]
-    plt.scatter(year_data['height'], year_data['AGB'], label=f'Year {year}', color=colors[i])
-
-plt.xlabel('Field Height')
+plt.scatter(v1['height'], v1['AGB'], label='Scatter Plot')
+plt.xlabel('CHM_mean')
 plt.ylabel('AGB')
 
-# Legend outside the plot
-plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
 
 # Define the curve function a*x**b
-def curve_function(x, a, b):
-    return a * np.power(x, b)
+def curve_function(x, a, b, c):
+    return a * np.power(x-c, b)
 
 # Initialize best parameters and error
 best_params = None
@@ -472,14 +451,16 @@ best_fit_error = float('inf')
 iteration_details = []
 
 # Number of iterations
-num_iterations = 100
+num_iterations = 15
+
+plt.figure(figsize=(8, 8), dpi=300)
 
 for iteration in range(num_iterations):
-    train_data, test_data = train_test_split(v1, test_size=0.05, random_state=iteration)
+    train_data, test_data = train_test_split(v1, test_size=0.3, random_state=iteration)
 
-    initial_guess = [1, 1]
+    initial_guess = [3, 1,0]
 
-    params, covariance = curve_fit(curve_function, train_data['height'], train_data['AGB'], p0=initial_guess,method='dogbox')
+    params, covariance = curve_fit(curve_function, train_data['height'], train_data['AGB'], p0=initial_guess)
 
     predictions = curve_function(test_data['height'], *params)
 
@@ -506,11 +487,9 @@ print(f"\nBest Fit Parameters: {best_params}")
 print(f"Best RMSE: {best_fit_error}")
 print(f"Best R-squared: {iteration_df.loc[iteration_df['RMSE'].idxmin(), 'R-squared']}")
 
-# Save iteration results to CSV
-iteration_df.to_csv('iteration_results.csv', index=False)
-print('iteration_results.csv saved')
+iteration_df.to_csv(struct_plant_dir + '/iteration_results.csv', index=False)
+print(struct_plant_dir + '/iteration_results.csv', " saved")
 
-# Plot RMSE and R-squared over iterations
 fig, ax1 = plt.subplots(figsize=(8, 4))
 
 color = 'tab:red'
@@ -525,18 +504,15 @@ ax2.set_ylabel('R-squared', color=color)
 ax2.plot(iteration_df['Iteration'], iteration_df['R-squared'], label='R-squared', color=color)
 ax2.tick_params(axis='y', labelcolor=color)
 
-fig.tight_layout()
+fig.tight_layout()  
 
+# Scatter plot and best-fit curve
 plt.figure(figsize=(8, 8), dpi=300)
-for i, year in enumerate(unique_years):
-    year_data = v1[v1['year_x'] == year]
-    plt.scatter(year_data['height'], year_data['AGB'], label=f'Year {year}', color=colors[i])
-
-x_curve = np.linspace(0, 40, 100)
-y_curve = curve_function(x_curve-5, *best_params)
-plt.plot(x_curve, y_curve, color='red', label=f'Best Fit: {best_params[0]:.2f} * x**{best_params[1]:.2f}\nRMSE: {best_fit_error:.2f}\nR-squared: {iteration_df.loc[iteration_df["RMSE"].idxmin(), "R-squared"]:.2f}\nIterations: {num_iterations}')
-
-plt.ylim(0, 300)
+plt.scatter(v1['height'], v1['AGB'], label='Data')
+x_curve = np.linspace(0, 50, 100)
+y_curve = curve_function(x_curve, *best_params)
+plt.plot(x_curve, y_curve, color='red', label=f'Best Fit: {best_params[0]:.2f} * x**{best_params[1]:.2f}\nRMSE: {best_fit_error:.2f}\nR-squared: {iteration_df.loc[iteration_df["RMSE"].idxmin(), "R-squared"]:.2f}')
+plt.ylim(0, 500)
 plt.xlabel('CHM Height (chm_mean)')
 plt.ylabel('AGB 2004')
 plt.title('Scatter Plot and Best Fit Curve')
@@ -553,37 +529,29 @@ from scipy.optimize import minimize
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
 
-# Assuming v is your original DataFrame
-# ... (previous code)
 
-# Filter data and preprocess
-v1 = v[v['area'] == 400]
+#v1 = v[v['area'] == 400]
 v1['AGB'] = v1['AGB_2004'] * 10 / v1['area']
-v1 = v1[v1['AGB'] <= 300]
-v1 = v1[v1['area'] == 400]
+#v1 = v1[v1['AGB'] <= 300]
+#v1 = v1[v1['area'] == 400]
 
 v1 = v1.dropna()
 
-# Plot scatter plot
 plt.figure(figsize=(8, 8), dpi=300)
 plt.scatter(v1['height'], v1['AGB'], label='Scatter Plot')
 plt.xlabel('Height')
 plt.ylabel('AGB')
 
-# Define the curve function a*x**b
 def curve_function(params, x, y):
     a, b = params
     predictions = a * np.power(x, b)
     return mean_squared_error(y, predictions)
 
-# Initialize best parameters and error
 best_params = None
 best_fit_error = float('inf')
 
-# Initialize lists to store iteration details
 iteration_details = []
 
-# Number of iterations
 num_iterations = 50
 
 plt.figure(figsize=(8, 8), dpi=300)
@@ -593,27 +561,20 @@ for iteration in range(num_iterations):
 
     initial_guess = [1, 1]
 
-    # Minimize the mean squared error
     result = minimize(curve_function, initial_guess, args=(train_data['height'], train_data['AGB']), method='L-BFGS-B')
 
-    # Get the optimized parameters
     params = result.x
 
-    # Test the model on the testing set
     predictions = params[0] * np.power(test_data['height'], params[1])
 
-    # Calculate RMSE
     fit_error = np.sqrt(mean_squared_error(test_data['AGB'], predictions))
 
-    # Calculate R-squared
     r2 = r2_score(test_data['AGB'], predictions)
 
-    # Update best parameters if the current iteration has a lower error
     if fit_error < best_fit_error:
         best_fit_error = fit_error
         best_params = params
 
-    # Append iteration details to the list
     iteration_details.append({
         'Iteration': iteration + 1,
         'Parameters': params,
@@ -621,22 +582,17 @@ for iteration in range(num_iterations):
         'R-squared': r2
     })
 
-    # Print iteration details
     print(f"Iteration {iteration + 1} - Parameters: {params}, RMSE: {fit_error}, R-squared: {r2}")
 
-# Create a DataFrame from the iteration details
 iteration_df = pd.DataFrame(iteration_details)
 
-# Print or use the final results
 print(f"\nBest Fit Parameters: {best_params}")
 print(f"Best RMSE: {best_fit_error}")
 print(f"Best R-squared: {iteration_df.loc[iteration_df['RMSE'].idxmin(), 'R-squared']}")
 
-# Export the DataFrame to a CSV file
 iteration_df.to_csv(struct_plant_dir + '/iteration_results.csv', index=False)
 print(struct_plant_dir + '/iteration_results.csv', " saved")
 
-# Plot RMSE and R-squared for each iteration
 fig, ax1 = plt.subplots(figsize=(8, 4))
 
 color = 'tab:red'
@@ -654,7 +610,6 @@ ax2.tick_params(axis='y', labelcolor=color)
 
 fig.tight_layout()  
 
-# Scatter plot and best-fit curve
 plt.figure(figsize=(8, 8), dpi=300)
 plt.scatter(v1['height'], v1['AGB'], label='Data')
 x_curve = np.linspace(0, 50, 100)
@@ -667,7 +622,7 @@ plt.title('Scatter Plot and Best Fit Curve')
 plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.show()
 
-#%% Fit plot
+#%%
 
 import numpy as np
 import pandas as pd
@@ -676,34 +631,29 @@ from scipy.optimize import curve_fit
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
 
+# Assuming v is your original DataFrame
+# ... (previous code)
 
-# Filter data and preprocess
 v1 = v[v['area'] == 400]
 v1['AGB'] = v1['AGB_2004'] * 10 / v1['area']
 v1 = v1[v1['AGB'] <= 300]
 
 v1 = v1.dropna()
 
-# Plot scatter plot
 plt.figure(figsize=(8, 8), dpi=300)
 plt.scatter(v1['height'], v1['AGB'], label='Scatter Plot')
 plt.xlabel('Height')
 plt.ylabel('AGB')
 
-# Define the curve function a*x**b
 def curve_function(x, a, b):
     return a * np.power(x, b)
 
-# Initialize best parameters and covariance matrix
 best_params, cov = curve_fit(curve_function, v1['height'], v1['AGB'], p0=[1, 1])
 
-# Test the model on the testing set
 predictions = curve_function(v1['height'], *best_params)
 
-# Calculate RMSE
 fit_error = np.sqrt(mean_squared_error(v1['AGB'], predictions))
 
-# Calculate R-squared
 r2 = r2_score(v1['AGB'], predictions)
 
 # Print results
@@ -735,6 +685,7 @@ plt.show()
 
 
 #%% With Savitzy Golay filter to smoothen the curve and remove noise
+'''
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -856,112 +807,6 @@ plt.ylabel('AGB 2004')
 plt.title('Scatter Plot and Best Fit Curve')
 plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.show()
+'''
 
-
-#%% Using PyTorch
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_squared_error
-
-# Assuming v1 is a DataFrame with columns 'height' and 'AGB'
-# Add 'year_x' column to the DataFrame if it doesn't exist
-v1['year_x'] = np.random.randint(2000, 2020, size=len(v1))  # Example: Random 'year_x' values
-
-# Calculate 'AGB' based on 'AGB_2004', 'area', and add noise to 'height' for variety
-v1['AGB'] = v1['AGB_2004'] * 10 / v1['area'] + np.random.normal(0, 5, len(v1))
-v1 = v1.dropna()
-
-# Select relevant features
-features = v1['height'].values.reshape(-1, 1)
-target = v1['AGB'].values.reshape(-1, 1)
-
-# Split the data
-X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
-
-# Feature Scaling
-scaler_X = StandardScaler()
-X_train_scaled = scaler_X.fit_transform(X_train)
-X_test_scaled = scaler_X.transform(X_test)
-
-scaler_y = StandardScaler()
-y_train_scaled = scaler_y.fit_transform(y_train)
-y_test_scaled = scaler_y.transform(y_test)
-
-# Convert to PyTorch tensors
-X_train_tensor = torch.tensor(X_train_scaled, dtype=torch.float32)
-y_train_tensor = torch.tensor(y_train_scaled, dtype=torch.float32)
-X_test_tensor = torch.tensor(X_test_scaled, dtype=torch.float32)
-
-# Define a neural network model with batch normalization and dropout
-class NeuralNetwork(nn.Module):
-    def __init__(self, input_size, hidden_size1, hidden_size2, output_size, dropout_rate=0.5):
-        super(NeuralNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_size, hidden_size1)
-        self.bn1 = nn.BatchNorm1d(hidden_size1)
-        self.relu1 = nn.ReLU()
-        self.dropout1 = nn.Dropout(dropout_rate)
-        self.fc2 = nn.Linear(hidden_size1, hidden_size2)
-        self.bn2 = nn.BatchNorm1d(hidden_size2)
-        self.relu2 = nn.ReLU()
-        self.dropout2 = nn.Dropout(dropout_rate)
-        self.fc3 = nn.Linear(hidden_size2, output_size)
-
-    def forward(self, x):
-        x = self.fc1(x)
-        x = self.bn1(x)
-        x = self.relu1(x)
-        x = self.dropout1(x)
-        x = self.fc2(x)
-        x = self.bn2(x)
-        x = self.relu2(x)
-        x = self.dropout2(x)
-        x = self.fc3(x)
-        return x
-
-# Initialize the model
-input_size = 1
-hidden_size1 = 16
-hidden_size2 = 8
-output_size = 1
-dropout_rate = 0.5
-model = NeuralNetwork(input_size, hidden_size1, hidden_size2, output_size, dropout_rate)
-
-# Define loss function and optimizer
-criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
-
-num_epochs = 1000
-for epoch in range(num_epochs):
-    model.train()
-    optimizer.zero_grad()
-    outputs = model(X_train_tensor)
-    loss = criterion(outputs, y_train_tensor)
-    loss.backward()
-    optimizer.step()
-
-    if (epoch + 1) % 100 == 0:
-        print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
-
-model.eval()
-with torch.no_grad():
-    predictions_tensor = model(X_test_tensor)
-    predictions = predictions_tensor.numpy()
-
-predictions_original_scale = scaler_y.inverse_transform(predictions)
-
-rmse = np.sqrt(mean_squared_error(y_test, predictions_original_scale))
-print(f'Test RMSE: {rmse:.4f}')
-
-plt.scatter(X_test, y_test, label='Actual Data')
-plt.scatter(X_test, predictions_original_scale, label='Predictions', color='red')
-plt.xlabel('Field Height')
-plt.ylabel('AGB')
-plt.title('Neural Network Regression with Batch Normalization and Dropout')
-plt.legend()
-plt.show()
+#%% 

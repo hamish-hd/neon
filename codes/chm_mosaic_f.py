@@ -37,7 +37,6 @@ for subdirectory in os.listdir(input_directory):
         gdf = gdf.to_crs(CRS.from_epsg(4326))
         #gdf = gdf[gdf['subplotID'].str.contains('_400')]
 
-        # Load raster
         stats = zonal_stats(gdf['geometry'], mosaic_path, stats='percentile_95 mean count', nodata=-9999)
 
         result_df = gdf.copy()
