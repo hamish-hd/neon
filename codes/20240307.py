@@ -78,31 +78,24 @@ for band_number in range(1, num_bands + 1):
 print(HV_df)
 #%% merge df
 df = pd.concat([HH_df, HV_df], axis=1)
-df.to_csv('/data/gedi/_neon/_new/LENO/nisar_data_leno.csv', index=False)
+df.to_csv('/data/gedi/_neon/_new/LENO/nisar_data_m2_leno.csv', index=False)
 df['area'] = gdf['area']
 
 
 #%%
 # Input files
-agb_file = '/home/hamish/biomass_new/rs_data/lidar_biomass/agb_2019_reg.tif'
+agb_file = '/data/gedi/_neon/_new/LENO/agb_m2_LENO_2019.tif'
 #shapefile_path ='file:///data/gedi/_neon/output_shapefile.shp'
 
 gdf = gpd.read_file(shapefile_path)
-
 reprojected_tiff_path = agb_file[:-4]+'_4326.tif'
-
 input_ds = gdal.Open(agb_file, gdalconst.GA_ReadOnly)
-
 input_proj = input_ds.GetProjection()
-
 input_geo = input_ds.GetGeoTransform()
-
 target_srs = osr.SpatialReference()
 target_srs.ImportFromEPSG(4326)
-
 # Create an output raster dataset
 output_ds = gdal.Warp(reprojected_tiff_path, input_ds, dstSRS=target_srs.ExportToWkt())
-
 # Close datasets
 input_ds = None
 output_ds = None
@@ -110,15 +103,30 @@ output_ds = None
 stats = zonal_stats(gdf['geometry'], reprojected_tiff_path, stats='mean', nodata=-9999)
 
 # Add statistics to DataFrame
-df['AGB'] = [stat['mean'] if stat else np.nan for stat in stats]
-df['AGB_ha'] = df['AGB']/df['area']*10000
+df['AGB_1'] = [stat['mean'] if stat else np.nan for stat in stats]
+df['AGB_ha'] = df['AGB']/df['area']*10
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #%% Plot 
-plt.figure(figsize=(10, 6))
-plt.scatter(df['AGB_ha'],10*np.log10(df['HV_4_mean'].astype('float64')),color='black')
-plt.xlabel('AGB')
+plt.figure(figsize=(10, 10))
+plt.scatter(df['AGB'],10*np.log10(df['HV_4_mean'].astype('float64')),color='black')
+plt.xlabel('AGB_ha')
 plt.ylabel('HV_1')
 #plt.xlim(0,150)
-plt.ylim(-15,-6)
+plt.ylim(-15,0)
 #plt.xlim(0,100)
 plt.title('HV_1_mean vs AGB')
 plt.grid(True)

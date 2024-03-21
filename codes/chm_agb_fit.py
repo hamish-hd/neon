@@ -297,7 +297,9 @@ fig, ax = plt.subplots(figsize=(8, 8), dpi=300)
 
 
 x_curve = np.linspace(0, 40, 100)  
-y_curve = 3.26 * np.power(x_curve, 1.34)
+#y_curve = 3.26 * np.power(x_curve, 1.34)
+
+y_curve = 3.26 * np.exp(x_curve/6)
 ax.plot(x_curve, y_curve, color='red', label='Curve')
 
 
@@ -440,8 +442,8 @@ plt.ylabel('AGB')
 
 
 # Define the curve function a*x**b
-def curve_function(x, a, b, c):
-    return a * np.power(x-c, b)
+def curve_function(x, a, b):
+    return a * np.power(x, b)
 
 # Initialize best parameters and error
 best_params = None
@@ -458,7 +460,7 @@ plt.figure(figsize=(8, 8), dpi=300)
 for iteration in range(num_iterations):
     train_data, test_data = train_test_split(v1, test_size=0.3, random_state=iteration)
 
-    initial_guess = [3, 1,0]
+    initial_guess = [3, 1]
 
     params, covariance = curve_fit(curve_function, train_data['height'], train_data['AGB'], p0=initial_guess)
 
@@ -518,6 +520,115 @@ plt.ylabel('AGB 2004')
 plt.title('Scatter Plot and Best Fit Curve')
 plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.show()
+
+#%% Ye woh trial wala code hai
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score
+from scipy.optimize import curve_fit
+
+# Assuming v1 is your DataFrame containing the data
+
+# Drop NaN values before splitting
+v1 = v1.dropna()
+
+# Plot scatter plot
+plt.figure(figsize=(8, 8), dpi=300)
+plt.scatter(v1['height'], v1['AGB'], label='Scatter Plot')
+plt.xlabel('CHM_mean')
+plt.ylabel('AGB')
+
+# Define the curve function a*x**b
+def curve_function(x, a, b, c):
+    return ((x-a)**b)*np.exp(x/c)
+
+# Initialize best parameters and error
+best_params = None
+best_fit_error = float('inf')
+
+# Initialize lists to store iteration details
+iteration_details = []
+
+# Number of iterations
+num_iterations = 15
+
+plt.figure(figsize=(8, 8), dpi=300)
+
+for iteration in range(num_iterations):
+    # Drop NaN values before splitting
+    v1 = v1.dropna()
+    train_data, test_data = train_test_split(v1, test_size=0.3, random_state=iteration)
+
+    initial_guess = [3, 1, 5]
+
+    params, covariance = curve_fit(curve_function, train_data['height'], train_data['AGB'], p0=initial_guess)
+
+    predictions = curve_function(test_data['height'], *params)
+
+    # Filter out NaN values from test_data['AGB'] and predictions arrays
+    non_nan_indices = ~np.isnan(test_data['AGB']) & ~np.isnan(predictions)
+    test_agb = test_data['AGB'][non_nan_indices]
+    pred_agb = predictions[non_nan_indices]
+
+    fit_error = np.sqrt(mean_squared_error(test_agb, pred_agb))
+
+    r2 = r2_score(test_agb, pred_agb)
+
+    if fit_error < best_fit_error:
+        best_fit_error = fit_error
+        best_params = params
+
+    iteration_details.append({
+        'Iteration': iteration + 1,
+        'Parameters': params,
+        'RMSE': fit_error,
+        'R-squared': r2
+    })
+
+    print(f"Iteration {iteration + 1} - Parameters: {params}, RMSE: {fit_error}, R-squared: {r2}")
+
+iteration_df = pd.DataFrame(iteration_details)
+
+print(f"\nBest Fit Parameters: {best_params}")
+print(f"Best RMSE: {best_fit_error}")
+print(f"Best R-squared: {iteration_df.loc[iteration_df['RMSE'].idxmin(), 'R-squared']}")
+
+iteration_df.to_csv(struct_plant_dir + '/iteration_results.csv', index=False)
+print(struct_plant_dir + '/iteration_results.csv', " saved")
+
+fig, ax1 = plt.subplots(figsize=(8, 4))
+
+color = 'tab:red'
+ax1.set_xlabel('Iteration')
+ax1.set_ylabel('RMSE', color=color)
+ax1.plot(iteration_df['Iteration'], iteration_df['RMSE'], label='RMSE', color=color)
+ax1.tick_params(axis='y', labelcolor=color)
+
+ax2 = ax1.twinx()  
+color = 'tab:blue'
+ax2.set_ylabel('R-squared', color=color)  
+ax2.plot(iteration_df['Iteration'], iteration_df['R-squared'], label='R-squared', color=color)
+ax2.tick_params(axis='y', labelcolor=color)
+
+fig.tight_layout()  
+
+# Scatter plot and best-fit curve
+plt.figure(figsize=(8, 8), dpi=300)
+plt.scatter(v1['height'], v1['AGB'], label='Data')
+x_curve = np.linspace(0, 50, 100)
+y_curve = curve_function(x_curve-best_params[2], *best_params)
+plt.plot(x_curve, y_curve, color='red', label=f'Best Fit: {best_params[0]:.2f} * x**{best_params[1]:.2f}\nRMSE: {best_fit_error:.2f}\nR-squared: {iteration_df.loc[iteration_df["RMSE"].idxmin(), "R-squared"]:.2f}')
+plt.ylim(0, 500)
+plt.xlabel('CHM Height (chm_mean)')
+plt.ylabel('AGB 2004')
+plt.title('Scatter Plot and Best Fit Curve')
+plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.show()
+
+
 
 #%%
 #Using L-BFGS method
