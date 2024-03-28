@@ -100,10 +100,10 @@ output_ds = gdal.Warp(reprojected_tiff_path, input_ds, dstSRS=target_srs.ExportT
 input_ds = None
 output_ds = None
 #%%
-stats = zonal_stats(gdf['geometry'], reprojected_tiff_path, stats='mean', nodata=-9999)
+stats = zonal_stats(gdf['geometry'], reprojected_tiff_path, stats='max', nodata=-9999)
 
 # Add statistics to DataFrame
-df['AGB_1'] = [stat['mean'] if stat else np.nan for stat in stats]
+df['AGB'] = [stat['max'] if stat else np.nan for stat in stats]
 df['AGB_ha'] = df['AGB']/df['area']*10
 
 
@@ -122,7 +122,7 @@ df['AGB_ha'] = df['AGB']/df['area']*10
 
 #%% Plot 
 plt.figure(figsize=(10, 10))
-plt.scatter(df['AGB'],10*np.log10(df['HV_4_mean'].astype('float64')),color='black')
+plt.scatter(df['AGB_ha'],10*np.log10(df['HV_4_mean'].astype('float64')),color='black')
 plt.xlabel('AGB_ha')
 plt.ylabel('HV_1')
 #plt.xlim(0,150)
